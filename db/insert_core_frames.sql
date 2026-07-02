@@ -1,5 +1,3 @@
-TRUNCATE TABLE core.frames;
-
 INSERT INTO core.frames (
     source,
     source_frame_id,
