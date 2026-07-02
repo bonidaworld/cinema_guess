@@ -6,7 +6,8 @@ WITH directory AS (
 ),
 existing_files AS (
     SELECT
-        directory.normalized_path || '/' || files.file_name AS storage_path
+        directory.normalized_path || '/' || lower(files.file_name)
+            AS storage_path
     FROM directory
     CROSS JOIN LATERAL pg_ls_dir(directory.source_path) AS files(file_name)
     WHERE lower(files.file_name) ~ '[.](jpg|jpeg|png|webp|avif)$'
