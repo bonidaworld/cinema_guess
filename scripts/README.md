@@ -18,14 +18,32 @@ PGUSER=postgres
 PGPASSWORD="your-password"
 SQL_DIR=C:/Kurage/CinemaGuess/db
 FRAMES_ORIGINAL_DIR=C:/Kurage/CinemaGuess/data/frames/original
+FRAMES_WEBP_DIR=C:/Kurage/CinemaGuess/data/frames/webp
 ```
 
-`FRAMES_ORIGINAL_DIR` must be accessible from the machine running PostgreSQL.
+Both frame directories must be accessible from the machine running PostgreSQL.
 
 ## Run
 
 ```powershell
 python scripts/psql_data_update.py
+```
+
+## Process frame image assets
+
+The script reads `DATABASE_URL`, or the five `PG*` values above, from the
+project root `.env`.
+
+Install the image-processing dependencies:
+
+```powershell
+pip install Pillow python-dotenv psycopg2-binary
+```
+
+Then update the original asset metadata and create the WebP assets:
+
+```powershell
+python scripts/process_frame_assets.py
 ```
 
     

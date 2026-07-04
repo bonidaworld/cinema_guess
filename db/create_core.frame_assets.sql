@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS core.frame_assets
     source_frame_id text NOT NULL,
 
     asset_type text NOT NULL
-        CHECK (asset_type IN ('original', 'web', 'thumb')),
+        CHECK (asset_type IN ('original', 'webp', 'thumb')),
 
     storage_path text NOT NULL,
 

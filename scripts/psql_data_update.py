@@ -17,7 +17,8 @@ SQL_DIR = Path(dotenv_values(ENV_FILE)["SQL_DIR"])
 SQL_FILES = (
     SQL_DIR / "insert_core_frames.sql",
     SQL_DIR / "insert_core.frame_assets.sql",
-    SQL_DIR / "update_core.frame_assets_file_exists.sql",
+    SQL_DIR / "update_core.frame_assets_original_file_exists.sql",
+    SQL_DIR / "update_core.frame_assets_webp_file_exists.sql",
 )
 
 
@@ -48,10 +49,20 @@ def read_frames_original_dir() -> str:
     return frames_dir
 
 
+def read_frames_webp_dir() -> str:
+    frames_dir = dotenv_values(ENV_FILE).get("FRAMES_WEBP_DIR")
+    if not frames_dir:
+        raise ValueError(f"FRAMES_WEBP_DIR is missing or empty in {ENV_FILE}")
+    return frames_dir
+
+
 def main() -> int:
     try:
         postgres_environment = read_postgres_environment()
-        frames_dir = read_frames_original_dir()
+
+        frames_original_dir = read_frames_original_dir()
+        frames_webp_dir = read_frames_webp_dir()
+
         missing_files = [path for path in SQL_FILES if not path.is_file()]
         if missing_files:
             raise FileNotFoundError(
@@ -77,7 +88,9 @@ def main() -> int:
         "--set",
         "ON_ERROR_STOP=1",
         "--set",
-        f"frames_dir={frames_dir}",
+        f"frames_original_dir={frames_original_dir}",
+        "--set",
+        f"frames_webp_dir={frames_webp_dir}",
         "--single-transaction",
     ]
     completion_markers = tuple(

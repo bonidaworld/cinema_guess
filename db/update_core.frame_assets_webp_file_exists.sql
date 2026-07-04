@@ -1,7 +1,7 @@
 WITH directory AS (
     SELECT
-        :'frames_dir' AS source_path,
-        lower(rtrim(replace(:'frames_dir', chr(92), '/'), '/'))
+        :'frames_webp_dir' AS source_path,
+        lower(rtrim(replace(:'frames_webp_dir', chr(92), '/'), '/'))
             AS normalized_path
 ),
 existing_files AS (
@@ -10,7 +10,7 @@ existing_files AS (
             AS storage_path
     FROM directory
     CROSS JOIN LATERAL pg_ls_dir(directory.source_path) AS files(file_name)
-    WHERE lower(files.file_name) ~ '[.](jpg|jpeg|png|webp|avif)$'
+    WHERE lower(files.file_name) ~ '[.]webp$'
 )
 UPDATE core.frame_assets AS asset
 SET file_exists = EXISTS (
@@ -18,4 +18,5 @@ SET file_exists = EXISTS (
     FROM existing_files
     WHERE existing_files.storage_path =
         lower(replace(asset.storage_path, chr(92), '/'))
-);
+)
+WHERE asset.asset_type = 'webp';
