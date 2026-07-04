@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { MenuWebGLBackground } from "@/src/components/MenuWebGLBackground";
 
-const ROUNDS_PER_GAME = 5;
+const ROUNDS_PER_GAME = 1;
 
 type GameScreen = "menu" | "game" | "results";
 
@@ -164,54 +165,99 @@ export default function Home() {
     setScreen("menu");
   }
 
-  if (screen === "menu") {
+    if (screen === "menu") {
     return (
-      <main className="flex min-h-screen w-full items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-100">
-        <div className="flex w-full max-w-xl flex-col items-center text-center">
-          <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-            CinemaGuesser
-          </h1>
-          <p className="mt-5 text-zinc-400">
-            Угадайте, на какой минуте фильма сделан этот кадр.
-          </p>
-          <button
-            type="button"
-            onClick={handleStartGame}
-            className="mt-10 rounded-lg bg-amber-400 px-8 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
-          >
-            Играть
-          </button>
-        </div>
-      </main>
+        // <main className="relative min-h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+        // <div className="crt-bg">
+        //     <img
+        //     src="/5DEQH87W.jpg" 
+        //     alt=""
+        //     className="crt-bg-image"
+        //     />
+        // </div>
+
+        // <div className="relative z-10 flex min-h-screen w-full flex-col items-center justify-center px-6 text-center">
+
+        //     <h1 className="text-6xl font-bold tracking-tight text-emerald-950 text-shadow-lg text-shadow-amber-400/20">
+        //         CinemaGuesser
+        //     </h1>
+
+        //     <p className="mt-5 text-zinc-300">
+        //     Угадайте, на какой минуте фильма сделан этот кадр.
+        //     </p>
+
+        //     <button
+        //     type="button"
+        //     onClick={handleStartGame}
+        //     className="mt-10 rounded-lg bg-amber-400 px-8 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
+        //     >
+        //     Играть
+        //     </button>
+        // </div>
+        // </main>
+
+        <main className="relative min-h-screen overflow-hidden bg-zinc-950 text-zinc-100">
+            
+             <div className="crt-bg">
+                <img
+                    src="/5DEQH87W.jpg"
+                    alt=""
+                    className="crt-bg-image"
+                />
+            </div>
+
+            <MenuWebGLBackground />
+            
+            <div className="relative z-10 flex min-h-screen w-full flex-col items-center justify-center px-6 text-center">
+             
+                <h1 className="text-6xl font-bold tracking-tight">
+                CinemaGuesser
+                </h1>
+
+                <p className="mt-2 text-zinc-300">
+                Угадайте, на какой минуте фильма сделан кадр
+                </p>
+
+                <button
+                type="button"
+                onClick={handleStartGame}
+                className="mt-10 rounded-lg bg-emerald-400 px-6 py-3 font-large text-emerald-950 transition hover:bg-emerald-300"
+                >
+                Играть
+                </button>
+            </div>
+        </main>
     );
-  }
+    }
 
   if (screen === "results") {
     return (
       <main className="flex min-h-screen w-full items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-100">
-        <div className="flex w-full max-w-xl flex-col items-center text-center">
-          <p className="text-sm font-medium text-amber-400">Игра завершена</p>
-          <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
+        <h1 className="fixed right-6 top-6 z-10 text-4xl font-bold tracking-tight sm:text-2xl">
             CinemaGuesser
-          </h1>
-          <p className="mt-10 text-zinc-400">Набрано очков</p>
-          <p className="mt-3 text-6xl font-bold text-emerald-400">
-            {sessionScore}
-          </p>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
+        </h1>
+
+        <div className="results-enter flex w-full max-w-xl flex-col items-center text-center">
+          
+            <p className="text-5xl font-medium text-amber-400">Игра завершена</p>
+            <p className="mt-5 text-zinc-400">Набрано очков:</p>
+            <p className="mt-3 text-6xl font-bold text-emerald-400">
+                {sessionScore}
+            </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-3">
             <button
-              type="button"
-              onClick={handleStartGame}
-              className="rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
+                type="button"
+                onClick={handleStartGame}
+                className="rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
             >
-              Начать игру заново
+                Начать игру заново
             </button>
             <button
-              type="button"
-              onClick={handleReturnToMenu}
-              className="rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-3 font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
+                type="button"
+                onClick={handleReturnToMenu}
+                className="rounded-lg border border-zinc-700 bg-zinc-900 px-6 py-3 font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
             >
-              Вернуться в главное меню
+                Вернуться в главное меню
             </button>
           </div>
         </div>
@@ -264,7 +310,7 @@ export default function Home() {
           <p className="text-zinc-400">Общий счёт: {sessionScore}</p>
         </div>
 
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <h1 className="fixed right-6 top-6 z-10 text-4xl font-bold tracking-tight sm:text-2xl">
           CinemaGuesser
         </h1>
 
