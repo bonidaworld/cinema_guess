@@ -5,6 +5,11 @@ import sys
 from pathlib import Path
 from dotenv import dotenv_values
 
+if __package__:
+    from .logging_config import log_message
+else:
+    from logging_config import log_message
+
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / ".env"
 SQL_DIR = Path(dotenv_values(ENV_FILE)["SQL_DIR"])
@@ -74,23 +79,69 @@ def main() -> int:
         "--set",
         f"frames_dir={frames_dir}",
         "--single-transaction",
-        "--file",
-        str(SQL_FILES[0]),
-        "--file",
-        str(SQL_FILES[1]),
-        "--file",
-        str(SQL_FILES[2]),
     ]
+    completion_markers = tuple(
+        f"__SQL_COMPLETED_{index}__" for index in range(len(SQL_FILES))
+    )
+    for sql_file, marker in zip(SQL_FILES, completion_markers):
+        command.extend(
+            ["--file", str(sql_file), "--command", rf"\echo {marker}"]
+        )
 
     try:
-        return subprocess.run(command, env=environment, check=False).returncode
+        result = subprocess.run(
+            command,
+            env=environment,
+            check=False,
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+
+        completed = set()
+        query_results = {}
+        remaining_output = result.stdout
+        for sql_file, marker in zip(SQL_FILES, completion_markers):
+            query_output, separator, remaining_output = remaining_output.partition(
+                marker
+            )
+            output_lines = [
+                line.strip() for line in query_output.splitlines() if line.strip()
+            ]
+            query_results[sql_file] = output_lines[-1] if output_lines else None
+            if not separator:
+                break
+            completed.add(marker)
+
+        failed_query_found = False
+        for sql_file, marker in zip(SQL_FILES, completion_markers):
+            query_result = query_results.get(sql_file)
+            result_suffix = f" ({query_result})" if query_result else ""
+            if result.returncode == 0:
+                log_message(
+                    "info",
+                    f"SQL succeeded: {sql_file.name}{result_suffix}",
+                )
+            elif marker in completed:
+                log_message(
+                    "warning",
+                    f"SQL rolled back: {sql_file.name}{result_suffix}",
+                )
+            elif not failed_query_found:
+                log_message(
+                    "error",
+                    f"SQL failed: {sql_file.name}{result_suffix}",
+                )
+                failed_query_found = True
+            else:
+                log_message("warning", f"SQL skipped: {sql_file.name}")
+
+        return result.returncode
     except OSError as error:
         print(f"error: failed to start psql: {error}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("error: interrupted", file=sys.stderr)
         return 130
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
