@@ -3,22 +3,25 @@
 import Image from "next/image";
 import { useState } from "react";
 
-const ROUNDS_PER_GAME = 6;
+const ROUNDS_PER_GAME = 5;
 
 type GameScreen = "menu" | "game" | "results";
 
 type PublicRound = {
-  frameId: string;
-  movieTitle: string;
+  frameId: number;
+  framePublicKey: string;
+  imdbTconst: string | null;
+  title: string;
   year: number;
   runtimeSeconds: number;
-  image: string;
+  frameImage: string;
+  imageWidth: number;
+  imageHeight: number;
 };
 
 type GuessResult = {
-  guess: number;
-  actualPosition: number;
-  errorPercent: number;
+  actualTimestampSeconds: number;
+  differenceSeconds: number;
   score: number;
 };
 
@@ -41,7 +44,7 @@ export default function Home() {
   const [screen, setScreen] = useState<GameScreen>("menu");
   const [round, setRound] = useState<PublicRound | null>(null);
   const [roundNumber, setRoundNumber] = useState(1);
-  const [usedFrameIds, setUsedFrameIds] = useState<string[]>([]);
+  const [usedFrameIds, setUsedFrameIds] = useState<number[]>([]);
   const [guessedTimestampSeconds, setGuessedTimestampSeconds] = useState(0);
   const [guessResult, setGuessResult] = useState<GuessResult | null>(null);
   const [sessionScore, setSessionScore] = useState(0);
@@ -51,16 +54,11 @@ export default function Home() {
 
   const isResultShown = guessResult !== null;
   const targetTimestampSeconds =
-    round && guessResult
-      ? Math.round(guessResult.actualPosition * round.runtimeSeconds)
-      : 0;
-  const differenceSeconds =
-    round && guessResult
-      ? Math.round((guessResult.errorPercent / 100) * round.runtimeSeconds)
-      : 0;
+    guessResult?.actualTimestampSeconds ?? 0;
+  const differenceSeconds = guessResult?.differenceSeconds ?? 0;
 
   // The browser asks the server for a round without the correct answer.
-  async function loadRandomRound(excludedFrameIds: string[]) {
+  async function loadRandomRound(excludedFrameIds: number[]) {
     setIsLoading(true);
     setErrorMessage(null);
     setRound(null);
@@ -70,7 +68,7 @@ export default function Home() {
       const searchParams = new URLSearchParams();
 
       for (const frameId of excludedFrameIds) {
-        searchParams.append("exclude", frameId);
+        searchParams.append("exclude", frameId.toString());
       }
 
       const query = searchParams.toString();
@@ -103,7 +101,7 @@ export default function Home() {
     await loadRandomRound([]);
   }
 
-  // Only frameId and the normalized guess are sent to the server.
+  // Only frameId and the selected timestamp are sent to the server.
   async function handleCheckGuess() {
     if (!round || isResultShown || isSubmitting) {
       return;
@@ -113,7 +111,6 @@ export default function Home() {
     setErrorMessage(null);
 
     try {
-      const guess = guessedTimestampSeconds / round.runtimeSeconds;
       const response = await fetch("/api/guess", {
         method: "POST",
         headers: {
@@ -121,7 +118,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           frameId: round.frameId,
-          guess,
+          guessedTimestampSeconds,
         }),
       });
 
@@ -251,6 +248,14 @@ export default function Home() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-100">
+      <button
+        type="button"
+        onClick={handleReturnToMenu}
+        className="fixed left-6 top-6 z-10 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
+      >
+        Выйти в главное меню
+      </button>
+
       <div className="flex w-full max-w-4xl flex-col items-center text-center">
         <div className="mb-3 flex items-center gap-6 text-sm font-medium">
           <p className="text-amber-400">
@@ -269,8 +274,8 @@ export default function Home() {
 
         <div className="relative mt-10 aspect-video w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl">
           <Image
-            src={round.image}
-            alt={`Frame from ${round.movieTitle}`}
+            src={round.frameImage}
+            alt={`Frame from ${round.title}`}
             fill
             priority
             className="object-contain"
@@ -278,7 +283,7 @@ export default function Home() {
         </div>
 
         <p className="mt-4 text-zinc-500">
-          {round.movieTitle} ({round.year})
+          {round.title} ({round.year})
         </p>
 
         <div className="mt-8 w-full">

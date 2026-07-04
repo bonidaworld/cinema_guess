@@ -49,8 +49,8 @@ def select_conversion_candidates(cursor) -> list[tuple[str, str, str]]:
         FROM core.frame_assets AS original
         JOIN core.frames F ON original.source_frame_id = F.source_frame_id
         WHERE original.asset_type = 'original'
-          AND original.file_exists = true
-          AND (
+        AND original.file_exists = true
+        AND (
                 NOT EXISTS (  
                             SELECT 1
                             FROM core.frame_assets AS webp
