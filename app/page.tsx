@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { MenuWebGLBackground } from "@/src/components/MenuWebGLBackground";
 
-const ROUNDS_PER_GAME = 1;
+const ROUNDS_PER_GAME = 5;
 
 type GameScreen = "menu" | "game" | "results";
 

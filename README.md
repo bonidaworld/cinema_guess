@@ -1,147 +1,41 @@
 # CinemaGuesser
 
-CinemaGuesser is a small browser game where you see a frame from a movie and
-guess when it appears on the movie timeline.
-
-This repository is the current playable prototype. It uses Next.js, React, and
-TypeScript.
-
-## Prototype features
-
-- Six-round single-player game
-- Random frame selection without repeats during a game
-- Timeline slider with one-second adjustments
-- Server-side answer checking
-- Score for each guess and a total game score
-- Loading, error, round result, and final result screens
-- Local movie metadata and frame images
+CinemaGuesser is a browser game about placing a movie frame at the right point on the film timeline. The current prototype has a WebGL menu and a five-round single-player game. It loads playable frames from PostgreSQL, keeps the answer on the server until the player submits a guess, and calculates a score for each round.
 
 ## Run locally
 
-Requirements:
+Requirements: Node.js, npm, a PostgreSQL database with the CinemaGuesser schemas and `app.v_frames_ready` view, and the local WebP frame assets referenced by the database.
 
-- Node.js
-- npm
-
-Install dependencies and start the development server:
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000).
-
-Useful checks:
-
-```bash
-npm run lint
-npm run build
-```
-
-On Windows, if PowerShell blocks `npm.ps1`, use `npm.cmd` instead:
+Install dependencies and start Next.js from the repository root:
 
 ```powershell
+npm install
 npm.cmd run dev
 ```
 
-## Game loop
+Use `npm.cmd` in PowerShell if the execution policy blocks `npm.ps1`. Open [http://localhost:3000](http://localhost:3000) after the server starts.
 
-1. The browser requests a random round from `GET /api/round`.
-2. The server returns the frame, movie details, and runtime without exposing
-   the correct timestamp.
-3. The player selects a moment on the movie timeline.
-4. The browser sends the frame ID and normalized guess to `POST /api/guess`.
-5. The server checks the answer and returns the real position, error, and score.
-6. After six rounds, the game displays the total score.
+The app reads `DATABASE_URL` for PostgreSQL and `FRAMES_WEBP_DIR` for the local WebP asset directory. Configure these in the root `.env` file for your environment. Do not commit credentials. Database setup and the frame data pipeline are documented in [`docs/db_pipeline.md`](docs/db_pipeline.md), [`supabase/README.md`](supabase/README.md), and [`scripts/README.md`](scripts/README.md).
 
-## Local data model
+## Game flow
 
-The prototype uses TypeScript arrays instead of a database.
+1. `GET /api/round` selects a random ready frame, excluding frame IDs supplied by the browser for the current game. The response includes public movie details but not the correct timestamp.
+2. The player chooses a timestamp between zero and the movie runtime.
+3. `POST /api/guess` reads the correct timestamp from PostgreSQL and returns the result and score.
+4. `GET /api/frame-image/[framePublicKey]` resolves the image through the database and serves it only from the configured WebP directory.
+5. After five rounds, the browser displays the game total. Game progress and scores are held in browser state and are not persisted.
 
-Movies are stored in [`data/movies.ts`](data/movies.ts):
-
-```ts
-type Movie = {
-  id: string;
-  title: string;
-  year: number;
-  runtimeSeconds: number;
-};
-```
-
-Frames are stored in [`data/frames.ts`](data/frames.ts):
-
-```ts
-type Frame = {
-  id: string;
-  movieId: string;
-  image: string;
-  frameTimestampSeconds: number;
-};
-```
-
-`Frame.movieId` links a frame to `Movie.id`.
-
-## Add a movie
-
-Add a unique record to the `movies` array in `data/movies.ts`:
-
-```ts
-{
-  id: "7",
-  title: "Example Movie",
-  year: 2000,
-  runtimeSeconds: 7200,
-}
-```
-
-Use the full movie runtime in seconds. For example, two hours is `7200`
-seconds.
-
-## Add a frame
-
-1. Put the image in `public/frames`.
-2. Add a record to the `frames` array in `data/frames.ts`.
-3. Set `movieId` to an existing movie ID.
-4. Set `frameTimestampSeconds` to the frame's exact position in the movie.
-
-Example:
-
-```ts
-{
-  id: "frame-7",
-  movieId: "7",
-  image: "/frames/example-movie.jpg",
-  frameTimestampSeconds: 1800,
-}
-```
-
-Both movie IDs and frame IDs must be unique.
+The database connection is pooled in [`src/lib/db.ts`](src/lib/db.ts). The game-facing view is [`app.v_frames_ready`](db/create_app.v_frames_ready.sql). The application currently uses PostgreSQL; the older TypeScript movie and frame arrays are retained in the repository but are not used by the game API.
 
 ## Scoring
 
-The browser sends the guess as a value from `0` to `1`:
+The server normalizes the guessed and actual timestamps by the movie runtime and passes their positions to [`lib/scoring.ts`](lib/scoring.ts). A perfect answer earns up to 1,000 points; the score decreases with distance from the correct position.
 
-- `0` means the start of the movie.
-- `0.5` means the middle.
-- `1` means the end.
+## Current limits
 
-The server converts the real frame timestamp to the same range and measures
-the distance between the two values. The scoring curve in
-[`lib/scoring.ts`](lib/scoring.ts) awards up to `1000` points:
+- Games have no server-side session ID, account, saved history, or leaderboard. The browser supplies the IDs to exclude between rounds.
+- The database and WebP image files are environment dependencies; the WebP collection is stored locally outside Git, not in a hosted object store.
+- There is no automated test suite or production deployment workflow.
+- Rights to use the movie frames have not been established. The prototype content is not cleared for public distribution.
 
-- An exact answer gives `1000` points.
-- A nearby answer gives fewer points based on an exponential curve.
-- The worst possible answer gives `0` points.
-
-## Current limitations
-
-- All movie and frame data is stored locally in source files.
-- There is no database yet.
-- There are no real server-side game sessions.
-- Scores are not persisted and there is no leaderboard.
-- Images are stored locally in `public/frames`.
-- Content rights and licensing for movie frames are not solved yet. Treat the
-  current content as prototype material, not as cleared content for a public
-  product.
+See [`docs/project_status.md`](docs/project_status.md) for the implementation status and [`docs/slice.md`](docs/slice.md) for remaining work relative to the research plan.
