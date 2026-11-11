@@ -293,32 +293,29 @@ export default function Home() {
   }
 
   return (
-    <main className="flex min-h-screen w-full flex-col items-center justify-center bg-zinc-950 px-6 py-10 text-zinc-100">
-      <button
-        type="button"
-        onClick={handleReturnToMenu}
-        className="fixed left-6 top-6 z-10 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
-      >
-        Выйти в главное меню
-      </button>
+    <main className="flex min-h-screen w-full flex-col items-center bg-zinc-950 px-4 py-4 text-zinc-100 sm:px-6">
+      <header className="flex w-full max-w-5xl flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={handleReturnToMenu}
+          className="min-h-11 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
+        >
+          Выйти в главное меню
+        </button>
+        <h1 className="text-xl font-bold tracking-tight sm:text-2xl">
+          CinemaGuesser
+        </h1>
+      </header>
 
-      <div className="flex w-full max-w-4xl flex-col items-center text-center">
-        <div className="mb-3 flex items-center gap-6 text-sm font-medium">
+      <div className="flex w-full max-w-5xl flex-1 flex-col items-center justify-center pt-3 text-center">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 text-sm font-medium">
           <p className="text-amber-400">
             Раунд {roundNumber} / {ROUNDS_PER_GAME}
           </p>
           <p className="text-zinc-400">Общий счёт: {sessionScore}</p>
         </div>
 
-        <h1 className="fixed right-6 top-6 z-10 text-4xl font-bold tracking-tight sm:text-2xl">
-          CinemaGuesser
-        </h1>
-
-        <p className="mt-4 text-base text-zinc-400 sm:text-lg">
-          Угадайте, на какой минуте фильма сделан этот кадр.
-        </p>
-
-        <div className="relative mt-10 aspect-video w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl">
+        <div className="game-frame relative mt-3 aspect-video w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900 shadow-2xl">
           <Image
             src={round.frameImage}
             alt={`Frame from ${round.title}`}
@@ -328,12 +325,12 @@ export default function Home() {
           />
         </div>
 
-        <p className="mt-4 text-zinc-500">
+        <p className="mt-2 text-sm text-zinc-400">
           {round.title} ({round.year})
         </p>
 
-        <div className="mt-8 w-full">
-          <div className="mb-3 flex justify-between text-xs text-zinc-500">
+        <div className="mt-3 w-full max-w-4xl">
+          <div className="mb-1 flex justify-between text-xs text-zinc-400">
             <span>0:00</span>
             <span>{formatTime(round.runtimeSeconds)}</span>
           </div>
@@ -343,7 +340,7 @@ export default function Home() {
               type="button"
               onClick={() => handleAdjustGuess(-1)}
               disabled={isResultShown || guessedTimestampSeconds === 0}
-              className="h-10 w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 text-lg text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-11 w-11 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 text-lg text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Сдвинуть выбор на одну секунду назад"
               title="На секунду назад"
             >
@@ -360,7 +357,7 @@ export default function Home() {
               onChange={(event) =>
                 setGuessedTimestampSeconds(Number(event.target.value))
               }
-              className="min-w-0 flex-1 cursor-pointer accent-amber-400 disabled:cursor-not-allowed"
+              className="h-11 min-w-0 flex-1 cursor-pointer accent-amber-400 disabled:cursor-not-allowed"
               aria-label="Выбор момента на таймлайне фильма"
             />
 
@@ -371,7 +368,7 @@ export default function Home() {
                 isResultShown ||
                 guessedTimestampSeconds === round.runtimeSeconds
               }
-              className="h-10 w-10 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 text-lg text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="h-11 w-11 shrink-0 rounded-lg border border-zinc-700 bg-zinc-900 text-lg text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Сдвинуть выбор на одну секунду вперёд"
               title="На секунду вперёд"
             >
@@ -379,7 +376,7 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="mt-3 flex justify-center gap-6 text-xs text-zinc-500">
+          <div className="mt-1 flex flex-wrap justify-center gap-x-6 gap-y-1 text-sm text-zinc-400">
             <span>
               Твой выбор: {formatTime(guessedTimestampSeconds)}
             </span>
@@ -393,36 +390,36 @@ export default function Home() {
         </div>
 
         {guessResult ? (
-          <div className="mt-8 rounded-xl border border-zinc-800 bg-zinc-900 px-6 py-5">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1" aria-live="polite">
             {differenceSeconds === 0 ? (
-              <p className="text-lg font-semibold text-emerald-400">
+              <p className="text-sm font-semibold text-emerald-400">
                 HEADSHOT
               </p>
             ) : (
-              <p className="text-lg font-semibold text-zinc-100">
+              <p className="text-sm font-semibold text-zinc-100">
                 Ошиблись на: {formatTime(differenceSeconds)}
               </p>
             )}
-            <p className="mt-2 text-sm text-zinc-400">
+            <p className="text-sm text-zinc-400">
               Счёт: {guessResult.score}
             </p>
           </div>
         ) : (
-          <p className="mt-8 text-sm text-zinc-500">
+          <p className="mt-2 text-sm text-zinc-400">
             Передвинь маркер туда, где, по твоему мнению, находится этот кадр.
           </p>
         )}
 
         {errorMessage && (
-          <p className="mt-5 text-sm text-red-400">{errorMessage}</p>
+          <p className="mt-2 text-sm text-red-400" role="alert">{errorMessage}</p>
         )}
 
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <div className="mt-3 flex flex-wrap justify-center gap-3">
           {guessResult ? (
             <button
               type="button"
               onClick={handleNextRound}
-              className="rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
+              className="min-h-11 rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
             >
               {roundNumber === ROUNDS_PER_GAME
                 ? "Завершить игру"
@@ -433,7 +430,7 @@ export default function Home() {
               type="button"
               onClick={handleCheckGuess}
               disabled={isSubmitting}
-              className="rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
+              className="min-h-11 rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
             >
               {isSubmitting ? "Проверка..." : "Ответить"}
             </button>

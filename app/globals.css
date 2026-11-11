@@ -10,6 +10,12 @@ body {
   color: var(--foreground);
 }
 
+@media (min-width: 640px) and (min-height: 650px) {
+  .game-frame {
+    max-width: min(60rem, calc((100dvh - 360px) * 16 / 9));
+  }
+}
+
 /*  MAIN MENU BACKGROUND IMAGE  */
 /* ============================ */
 .crt-bg {
