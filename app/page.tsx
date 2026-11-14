@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MenuWebGLBackground } from "@/src/components/MenuWebGLBackground";
 
 const ROUNDS_PER_GAME = 5;
+const GAME_TOKEN_KEY = "cinemaguesser.gameToken";
 
 type GameScreen = "menu" | "game" | "results";
 
@@ -45,7 +46,7 @@ export default function Home() {
   const [screen, setScreen] = useState<GameScreen>("menu");
   const [round, setRound] = useState<PublicRound | null>(null);
   const [roundNumber, setRoundNumber] = useState(1);
-  const [usedFrameIds, setUsedFrameIds] = useState<number[]>([]);
+  const startingGame = useRef(false);
   const [guessedTimestampSeconds, setGuessedTimestampSeconds] = useState(0);
   const [guessResult, setGuessResult] = useState<GuessResult | null>(null);
   const [sessionScore, setSessionScore] = useState(0);
@@ -58,84 +59,105 @@ export default function Home() {
     guessResult?.actualTimestampSeconds ?? 0;
   const differenceSeconds = guessResult?.differenceSeconds ?? 0;
 
-  // The browser asks the server for a round without the correct answer.
-  async function loadRandomRound(excludedFrameIds: number[]) {
+  function gameHeaders(token: string) {
+    return { Authorization: `Bearer ${token}` };
+  }
+
+  async function restoreGame(token: string) {
+    const response = await fetch("/api/session", { headers: gameHeaders(token), cache: "no-store" });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      if (error.error === "FRAME_UNAVAILABLE") throw new Error("Игра или кадр недоступны. Начните новую игру.");
+      if (response.status === 404 || response.status === 401) {
+        sessionStorage.removeItem(GAME_TOKEN_KEY);
+        throw new Error("Игра или кадр недоступны. Начните новую игру.");
+      }
+      throw new Error("Не удалось восстановить игру. Попробуйте снова.");
+    }
+    const data: { totalScore: number; round: (PublicRound & { roundNumber: number; result: GuessResult | null; guessedTimestampSeconds: number | null }) | null } = await response.json();
+    setSessionScore(data.totalScore);
+    if (data.round) {
+      setRound(data.round);
+      setRoundNumber(data.round.roundNumber);
+      setGuessResult(data.round.result);
+      setGuessedTimestampSeconds(data.round.guessedTimestampSeconds ?? Math.round(data.round.runtimeSeconds / 2));
+    } else {
+      await createRound(token);
+    }
+  }
+
+  async function createRound(token: string) {
+    const response = await fetch("/api/round", { method: "POST", headers: gameHeaders(token) });
+    if (!response.ok) throw new Error("Не удалось загрузить раунд. Попробуйте снова.");
+    const next: PublicRound & { roundNumber: number } = await response.json();
+    setRound(next);
+    setRoundNumber(next.roundNumber);
+    setGuessResult(null);
+    setGuessedTimestampSeconds(Math.round(next.runtimeSeconds / 2));
+  }
+
+  async function loadGame() {
+    const token = sessionStorage.getItem(GAME_TOKEN_KEY);
+    if (!token) { setScreen("menu"); return; }
+    setScreen("game");
     setIsLoading(true);
     setErrorMessage(null);
-    setRound(null);
-    setGuessResult(null);
-
-    try {
-      const searchParams = new URLSearchParams();
-
-      for (const frameId of excludedFrameIds) {
-        searchParams.append("exclude", frameId.toString());
-      }
-
-      const query = searchParams.toString();
-      const endpoint = query ? `/api/round?${query}` : "/api/round";
-      const response = await fetch(endpoint, { cache: "no-store" });
-
-      if (!response.ok) {
-        throw new Error("Failed to load round");
-      }
-
-      const nextRound = (await response.json()) as PublicRound;
-
-      setRound(nextRound);
-      setUsedFrameIds([...excludedFrameIds, nextRound.frameId]);
-      setGuessedTimestampSeconds(
-        Math.round(nextRound.runtimeSeconds / 2),
-      );
-    } catch {
-      setErrorMessage("Failed to load the round.");
-    } finally {
-      setIsLoading(false);
-    }
+    try { await restoreGame(token); }
+    catch (error) { setErrorMessage(error instanceof Error ? error.message : "Не удалось загрузить игру."); }
+    finally { setIsLoading(false); }
   }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadGame(), 0);
+    return () => window.clearTimeout(timer);
+    // Restore only once when this tab opens or reloads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleStartGame() {
-    setRoundNumber(1);
-    setUsedFrameIds([]);
-    setSessionScore(0);
+    if (startingGame.current) return;
+    startingGame.current = true;
     setScreen("game");
-    await loadRandomRound([]);
+    setRound(null);
+    setGuessResult(null);
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const previous = sessionStorage.getItem(GAME_TOKEN_KEY);
+      if (previous) {
+        const ended = await fetch("/api/session", { method: "PATCH", headers: gameHeaders(previous) });
+        if (!ended.ok && ended.status !== 404) throw new Error("Не удалось завершить предыдущую игру.");
+        sessionStorage.removeItem(GAME_TOKEN_KEY);
+      }
+      const response = await fetch("/api/session", { method: "POST" });
+      if (!response.ok) throw new Error("Не удалось начать игру. Попробуйте снова.");
+      const { token }: { token: string } = await response.json();
+      sessionStorage.setItem(GAME_TOKEN_KEY, token);
+      setSessionScore(0);
+      await createRound(token);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Не удалось начать игру.");
+    } finally { setIsLoading(false); startingGame.current = false; }
   }
 
-  // Only frameId and the selected timestamp are sent to the server.
   async function handleCheckGuess() {
-    if (!round || isResultShown || isSubmitting) {
-      return;
-    }
-
+    if (!round || isResultShown || isSubmitting) return;
+    const token = sessionStorage.getItem(GAME_TOKEN_KEY);
+    if (!token) { setErrorMessage("Игра или кадр недоступны. Начните новую игру."); return; }
     setIsSubmitting(true);
     setErrorMessage(null);
-
     try {
       const response = await fetch("/api/guess", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          frameId: round.frameId,
-          guessedTimestampSeconds,
-        }),
+        method: "POST", headers: { ...gameHeaders(token), "Content-Type": "application/json" },
+        body: JSON.stringify({ roundNumber, guessedTimestampSeconds }),
       });
-
       if (!response.ok) {
-        throw new Error("Failed to check guess");
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error === "FRAME_UNAVAILABLE" ? "Игра или кадр недоступны. Начните новую игру." : "Не удалось загрузить раунд. Попробуйте снова.");
       }
-
-      const result = (await response.json()) as GuessResult;
-
-      setGuessResult(result);
-      setSessionScore((currentScore) => currentScore + result.score);
-    } catch {
-      setErrorMessage("Failed to check the answer.");
-    } finally {
-      setIsSubmitting(false);
-    }
+      await restoreGame(token);
+    } catch (error) { setErrorMessage(error instanceof TypeError ? "Не удалось проверить ответ. Попробуйте снова." : error instanceof Error ? error.message : "Не удалось проверить ответ."); }
+    finally { setIsSubmitting(false); }
   }
 
   function handleAdjustGuess(seconds: number) {
@@ -152,16 +174,32 @@ export default function Home() {
   }
 
   async function handleNextRound() {
-    if (roundNumber === ROUNDS_PER_GAME) {
-      setScreen("results");
-      return;
-    }
-
-    setRoundNumber((currentRound) => currentRound + 1);
-    await loadRandomRound(usedFrameIds);
+    if (roundNumber === ROUNDS_PER_GAME) { setScreen("results"); return; }
+    const token = sessionStorage.getItem(GAME_TOKEN_KEY);
+    if (!token || isSubmitting) return;
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try { await createRound(token); }
+    catch {
+      // The server may have created the round even if the response was lost.
+      try { await restoreGame(token); }
+      catch (error) { setErrorMessage(error instanceof TypeError ? "Не удалось проверить ответ. Попробуйте снова." : error instanceof Error ? error.message : "Не удалось проверить ответ."); }
+    } finally { setIsSubmitting(false); }
   }
 
-  function handleReturnToMenu() {
+  async function handleReturnToMenu() {
+    if (screen === "game" && !window.confirm("Выйти из игры? Матч завершится, а счёт не перенесётся в новую игру.")) return;
+    const token = sessionStorage.getItem(GAME_TOKEN_KEY);
+    if (token) {
+      try {
+        const response = await fetch("/api/session", { method: "PATCH", headers: gameHeaders(token) });
+        if (!response.ok && response.status !== 404) throw new Error();
+      } catch { setErrorMessage("Не удалось завершить игру. Попробуйте снова."); return; }
+      sessionStorage.removeItem(GAME_TOKEN_KEY);
+    }
+    setRound(null);
+    setSessionScore(0);
+    setErrorMessage(null);
     setScreen("menu");
   }
 
@@ -282,7 +320,7 @@ export default function Home() {
           </p>
           <button
             type="button"
-            onClick={() => loadRandomRound(usedFrameIds)}
+            onClick={() => sessionStorage.getItem(GAME_TOKEN_KEY) ? void loadGame() : void handleStartGame()}
             className="mt-6 rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
           >
             Попробовать снова
@@ -419,6 +457,7 @@ export default function Home() {
             <button
               type="button"
               onClick={handleNextRound}
+              disabled={isSubmitting}
               className="min-h-11 rounded-lg bg-amber-400 px-6 py-3 font-medium text-zinc-950 transition hover:bg-amber-300"
             >
               {roundNumber === ROUNDS_PER_GAME
